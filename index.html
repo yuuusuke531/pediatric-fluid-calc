@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="輸液計算">
+  <meta name="theme-color" content="#1A56DB">
+  <link rel="manifest" href="manifest.json">
+  <title>小児輸液計算</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --pri:#1A56DB;--pri-l:#E8F0FE;--pri-d:#1040BA;
+      --bg:#EEF2FB;--card:#fff;
+      --txt:#111827;--sub:#6B7280;--bdr:#E5E7EB;
+      --sh:0 1px 4px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
+      --r:14px;
+    }
+    body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+      background:var(--bg);color:var(--txt);min-height:100vh;
+      padding-bottom:calc(24px + env(safe-area-inset-bottom));}
+
+    /* Header */
+    .hdr{background:var(--pri);color:#fff;padding:13px 18px;
+      padding-top:calc(13px + env(safe-area-inset-top));
+      display:flex;align-items:center;gap:10px;
+      position:sticky;top:0;z-index:200;
+      box-shadow:0 2px 10px rgba(26,86,219,.35);}
+    .hdr-t{font-size:17px;font-weight:700;letter-spacing:-.3px;}
+    .hdr-s{font-size:10px;opacity:.7;margin-top:1px;}
+
+    /* Tab bar */
+    .tabbar{display:flex;background:var(--pri-d);
+      position:sticky;top:calc(44px + env(safe-area-inset-top));z-index:100;
+      box-shadow:0 2px 6px rgba(0,0,0,.12);}
+    .tab{flex:1;padding:11px 6px;border:none;background:transparent;
+      color:rgba(255,255,255,.55);font-size:13px;font-weight:600;
+      font-family:inherit;cursor:pointer;transition:.15s;
+      border-bottom:3px solid transparent;-webkit-tap-highlight-color:transparent;}
+    .tab.on{color:#fff;border-bottom:3px solid #93C5FD;}
+
+    /* Pages */
+    .page{display:none;padding:13px 14px 8px;max-width:500px;margin:0 auto;}
+    .page.on{display:block;}
+
+    /* Card */
+    .card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:11px;overflow:hidden;}
+    .ch{display:flex;align-items:center;gap:8px;padding:12px 15px 9px;border-bottom:1px solid var(--bdr);}
+    .ci{font-size:16px;}.ct{font-size:14px;font-weight:700;color:var(--pri);}
+    .cb{padding:13px 15px;}
+
+    /* Weight picker */
+    .w-disp{text-align:center;padding:2px 0 12px;}
+    .w-big{font-size:52px;font-weight:800;color:var(--pri);letter-spacing:-3px;line-height:1;}
+    .w-u{font-size:19px;font-weight:400;color:var(--sub);}
+    .pw{position:relative;height:176px;border-radius:10px;
+      background:#F4F7FF;border:1.5px solid #D1DAFE;overflow:hidden;}
+    .ps{height:176px;overflow-y:scroll;scroll-snap-type:y mandatory;
+      -webkit-overflow-scrolling:touch;scrollbar-width:none;}
+    .ps::-webkit-scrollbar{display:none;}
+    .pp{height:66px;}
+    .pi{height:44px;scroll-snap-align:center;display:flex;align-items:center;
+      justify-content:center;font-size:17px;color:#9CA3AF;user-select:none;cursor:pointer;}
+    .pi.sel{font-size:22px;font-weight:700;color:var(--pri);}
+    .pf{position:absolute;inset:0;pointer-events:none;
+      background:linear-gradient(to bottom,rgba(244,247,255,.97) 0%,rgba(244,247,255,.55) 28%,
+      transparent 42%,transparent 58%,rgba(244,247,255,.55) 72%,rgba(244,247,255,.97) 100%);}
+    .pl{position:absolute;top:50%;left:12px;right:12px;height:44px;transform:translateY(-50%);
+      border-top:2px solid rgba(26,86,219,.5);border-bottom:2px solid rgba(26,86,219,.5);
+      border-radius:6px;background:rgba(26,86,219,.05);pointer-events:none;}
+
+    /* Form */
+    .fr{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+    .fr:last-child{margin-bottom:0;}
+    .lb{font-size:13px;color:var(--sub);font-weight:600;min-width:42px;flex-shrink:0;}
+    select,input[type=number]{flex:1;height:44px;border:1.5px solid var(--bdr);
+      border-radius:10px;padding:0 11px;font-size:15px;font-family:inherit;
+      color:var(--txt);background:#fff;outline:none;
+      -webkit-appearance:none;appearance:none;transition:border-color .15s,box-shadow .15s;}
+    select:focus,input:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(26,86,219,.12);}
+    select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B7280' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;background-position:right 11px center;padding-right:30px;}
+    input[type=number]{text-align:right;}
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;}
+    .un{font-size:12px;color:var(--sub);font-weight:600;white-space:nowrap;flex-shrink:0;min-width:40px;}
+
+    /* Stepper */
+    .stepper{display:flex;align-items:center;flex:1;
+      border:1.5px solid var(--bdr);border-radius:10px;overflow:hidden;background:#fff;}
+    .st-btn{width:42px;height:44px;border:none;background:#F8FAFF;
+      font-size:20px;color:var(--pri);cursor:pointer;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;
+      -webkit-tap-highlight-color:transparent;transition:background .1s;}
+    .st-btn:active{background:var(--pri-l);}
+    .st-val{flex:1;height:44px;border:none;outline:none;text-align:center;
+      font-size:16px;font-weight:600;font-family:inherit;color:var(--txt);
+      background:transparent;-webkit-appearance:none;}
+    .st-val::-webkit-inner-spin-button{-webkit-appearance:none;}
+    .st-sep{width:1px;height:28px;background:var(--bdr);flex-shrink:0;}
+
+    /* Badge / Divider */
+    .badge{display:inline-flex;align-items:center;gap:4px;
+      background:var(--pri-l);color:var(--pri);border-radius:20px;
+      padding:2px 10px;font-size:11px;font-weight:700;margin-bottom:8px;}
+    .dv{height:1px;background:var(--bdr);margin:11px 0;}
+
+    /* Mix total */
+    .mix-total{background:#F4F7FF;border-radius:8px;padding:8px 12px;
+      margin-bottom:9px;display:flex;justify-content:space-between;align-items:center;}
+    .mt-lbl{font-size:12px;color:var(--sub);font-weight:600;}
+    .mt-val{font-size:15px;font-weight:700;color:var(--pri);}
+
+    /* Add/Remove buttons */
+    .add-btn{width:100%;height:40px;border:2px dashed #BFC8E0;border-radius:10px;
+      background:transparent;color:var(--pri);font-size:13px;font-weight:600;
+      font-family:inherit;cursor:pointer;display:flex;align-items:center;
+      justify-content:center;gap:5px;transition:background .15s;
+      -webkit-tap-highlight-color:transparent;margin-top:4px;}
+    .add-btn:active{background:var(--pri-l);}
+    .del-btn{width:28px;height:28px;border:none;border-radius:50%;
+      background:#FEE2E2;color:#DC2626;font-size:15px;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+    /* Toggle */
+    .togrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
+    .toglbl{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;}
+    .sw{position:relative;width:50px;height:28px;}
+    .sw input{opacity:0;width:0;height:0;}
+    .sw-t{position:absolute;inset:0;background:#D1D5DB;border-radius:14px;cursor:pointer;transition:.2s;}
+    .sw-t::before{content:'';position:absolute;height:22px;width:22px;left:3px;top:3px;
+      background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.2);}
+    .sw input:checked~.sw-t{background:var(--pri);}
+    .sw input:checked~.sw-t::before{transform:translateX(22px);}
+
+    /* Segment */
+    .seg{display:flex;background:#F3F4F6;border-radius:9px;padding:2px;gap:2px;margin-bottom:10px;}
+    .sg{flex:1;height:34px;border:none;border-radius:7px;font-size:11px;font-weight:600;
+      font-family:inherit;cursor:pointer;color:var(--sub);background:transparent;transition:.15s;
+      -webkit-tap-highlight-color:transparent;}
+    .sg.on{background:#fff;color:var(--pri);box-shadow:0 1px 3px rgba(0,0,0,.12);}
+
+    /* Results card */
+    .rc{background:linear-gradient(145deg,#1A56DB 0%,#1040BA 100%);border-radius:var(--r);
+      margin-bottom:11px;overflow:hidden;box-shadow:0 4px 18px rgba(26,86,219,.28);}
+    .rh{padding:12px 15px 9px;border-bottom:1px solid rgba(255,255,255,.13);
+      display:flex;align-items:center;gap:8px;}
+    .rh-t{font-size:15px;font-weight:700;color:#fff;}
+    .rs{padding:12px 15px;border-bottom:1px solid rgba(255,255,255,.09);}
+    .rs:last-child{border-bottom:none;}
+    .rs-t{font-size:10px;font-weight:800;color:rgba(255,255,255,.5);
+      letter-spacing:.6px;text-transform:uppercase;margin-bottom:9px;}
+
+    /* ── Water table (3-col grid) ── */
+    .wtab{display:grid;grid-template-columns:1fr 52px 72px;gap:5px 6px;align-items:baseline;}
+    .whdr{font-size:9px;font-weight:700;color:rgba(255,255,255,.45);
+      text-align:right;line-height:1.35;}
+    .wl{font-size:12px;color:rgba(255,255,255,.7);}
+    .wv{font-size:13px;font-weight:600;color:rgba(255,255,255,.85);text-align:right;}
+    .wv.hi{font-size:16px;font-weight:800;color:#93C5FD;}
+    .wv.gr{font-size:13px;font-weight:600;color:#6EE7B7;}
+    .wl.tot{font-weight:700;color:#fff;}
+    .wl.hs{color:rgba(255,255,255,.6);}
+
+    /* General result rows */
+    .rr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;}
+    .rr:last-child{margin-bottom:0;}
+    .rl{font-size:13px;color:rgba(255,255,255,.68);}
+    .rv{font-size:14px;font-weight:700;color:#fff;text-align:right;}
+    .rv sub{font-size:10px;font-weight:400;color:rgba(255,255,255,.5);margin-left:3px;vertical-align:baseline;}
+    .rv.hi{font-size:16px;color:#93C5FD;}
+    .rv.gr{color:#6EE7B7;}
+    .rsb{font-size:10px;color:rgba(255,255,255,.4);text-align:right;margin-top:-3px;margin-bottom:4px;}
+
+    /* GIR big number */
+    .gn{font-size:38px;font-weight:800;color:#fff;letter-spacing:-1.5px;line-height:1.05;}
+    .gu{font-size:13px;font-weight:400;color:rgba(255,255,255,.6);}
+    .empty{text-align:center;padding:20px 15px;color:rgba(255,255,255,.45);font-size:13px;line-height:1.6;}
+    /* 混合後 mEq/L 計算式 */
+    .rcalc{font-size:11px;color:rgba(255,255,255,.5);text-align:right;
+      margin-top:-2px;margin-bottom:5px;line-height:1.5;}
+
+    .foot{text-align:center;font-size:10px;color:var(--sub);opacity:.5;padding:2px 16px 16px;}
+
+    /* Hidden */
+    .fat-b{display:none;}.fat-b.on{display:block;}
+    .f3wrap{display:none;}.f3wrap.show{display:block;}
+  </style>
+</head>
+<body>
+
+<header class="hdr">
+  <span style="font-size:21px">💊</span>
+  <div>
+    <div class="hdr-t">小児輸液計算</div>
+    <div class="hdr-s">Pediatric Fluid Calculator</div>
+  </div>
+</header>
+
+<div class="tabbar">
+  <button class="tab on" data-p="p1">💉 輸液（混ぜない）</button>
+  <button class="tab"    data-p="p2">🔬 輸液（混ぜる）</button>
+</div>
+
+<!-- ══════════ PAGE 1: 混ぜない ══════════ -->
+<div class="page on" id="p1">
+  <!-- 体重 -->
+  <div class="card">
+    <div class="ch"><span class="ci">⚖️</span><span class="ct">体重</span></div>
+    <div class="cb">
+      <div class="w-disp"><span class="w-big" id="w1disp">3.0</span><span class="w-u"> kg</span></div>
+      <div class="pw">
+        <div class="ps" id="ps1"><div class="pp"></div><div class="pp"></div></div>
+        <div class="pf"></div><div class="pl"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 輸液 (イントラリポスなし) -->
+  <div class="card">
+    <div class="ch"><span class="ci">💉</span><span class="ct">輸液</span></div>
+    <div class="cb">
+      <div class="fr">
+        <span class="lb">製剤</span>
+        <select id="p1f1s"><option value="">── 選択なし ──</option></select>
+      </div>
+      <div class="fr">
+        <span class="lb">速度</span>
+        <input type="number" id="p1f1r" placeholder="0.0" step="0.1" min="0" inputmode="decimal">
+        <span class="un">ml/hr</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ミルク -->
+  <div class="card">
+    <div class="ch"><span class="ci">🍼</span><span class="ct">ミルク・母乳</span></div>
+    <div class="cb">
+      <div class="seg" id="p1mSeg">
+        <button class="sg on" data-t="none">なし</button>
+        <button class="sg" data-t="breast">母乳</button>
+        <button class="sg" data-t="formula">普通ミルク</button>
+        <button class="sg" data-t="f15">15%ミルク</button>
+      </div>
+      <div id="p1mbody" style="display:none;">
+        <div class="fr">
+          <span class="lb">1回量</span>
+          <div class="stepper">
+            <button class="st-btn" data-t="p1mVol" data-d="-1">−</button>
+            <span class="st-sep"></span>
+            <input class="st-val" type="number" id="p1mVol" value="0" min="0" step="1" inputmode="numeric">
+            <span class="st-sep"></span>
+            <button class="st-btn" data-t="p1mVol" data-d="1">＋</button>
+          </div>
+          <span class="un">ml</span>
+        </div>
+        <div class="fr">
+          <span class="lb">回数</span>
+          <div class="stepper">
+            <button class="st-btn" data-t="p1mFreq" data-d="-1">−</button>
+            <span class="st-sep"></span>
+            <input class="st-val" type="number" id="p1mFreq" value="8" min="0" step="1" inputmode="numeric">
+            <span class="st-sep"></span>
+            <button class="st-btn" data-t="p1mFreq" data-d="1">＋</button>
+          </div>
+          <span class="un">回/日</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 結果 -->
+  <div class="rc">
+    <div class="rh"><span style="font-size:16px">📊</span><span class="rh-t">計算結果</span></div>
+    <div id="p1res"><div class="empty">輸液またはミルクを<br>入力してください</div></div>
+  </div>
+  <div class="foot">小児輸液計算 v1.2 ― 必ず医師の判断のもとでご使用ください</div>
+</div>
+
+<!-- ══════════ PAGE 2: 混ぜる ══════════ -->
+<div class="page" id="p2">
+  <!-- 体重 -->
+  <div class="card">
+    <div class="ch"><span class="ci">⚖️</span><span class="ct">体重</span></div>
+    <div class="cb">
+      <div class="w-disp"><span class="w-big" id="w2disp">3.0</span><span class="w-u"> kg</span></div>
+      <div class="pw">
+        <div class="ps" id="ps2"><div class="pp"></div><div class="pp"></div></div>
+        <div class="pf"></div><div class="pl"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 混合輸液 -->
+  <div class="card">
+    <div class="ch"><span class="ci">🔬</span><span class="ct">混合輸液</span></div>
+    <div class="cb">
+
+      <!-- 輸液① -->
+      <div class="badge">輸液①</div>
+      <div class="fr">
+        <span class="lb">製剤</span>
+        <select id="p2f1s"><option value="">── 選択なし ──</option></select>
+      </div>
+      <div class="fr">
+        <span class="lb">量</span>
+        <input type="number" id="p2v1" placeholder="500" step="1" min="0" inputmode="numeric">
+        <span class="un">ml</span>
+      </div>
+
+      <div class="dv"></div>
+
+      <!-- 輸液② -->
+      <div class="badge">輸液②</div>
+      <div class="fr">
+        <span class="lb">製剤</span>
+        <select id="p2f2s"><option value="">── 選択なし ──</option></select>
+      </div>
+      <div class="fr">
+        <span class="lb">量</span>
+        <input type="number" id="p2v2" placeholder="0" step="1" min="0" inputmode="numeric">
+        <span class="un">ml</span>
+      </div>
+
+      <!-- 輸液③ (折りたたみ) -->
+      <div class="f3wrap" id="f3wrap">
+        <div class="dv"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div class="badge" style="margin-bottom:0">輸液③</div>
+          <button class="del-btn" id="delF3">✕</button>
+        </div>
+        <div class="fr">
+          <span class="lb">製剤</span>
+          <select id="p2f3s"><option value="">── 選択なし ──</option></select>
+        </div>
+        <div class="fr">
+          <span class="lb">量</span>
+          <input type="number" id="p2v3" placeholder="0" step="1" min="0" inputmode="numeric">
+          <span class="un">ml</span>
+        </div>
+      </div>
+
+      <button class="add-btn" id="addF3">＋ 輸液③を追加</button>
+
+      <div class="dv"></div>
+
+      <!-- 合計・速度 -->
+      <div class="mix-total">
+        <span class="mt-lbl">混合後 合計量</span>
+        <span class="mt-val" id="mixTotal">— ml</span>
+      </div>
+      <div class="fr">
+        <span class="lb">速度</span>
+        <input type="number" id="p2rate" placeholder="0.0" step="0.1" min="0" inputmode="decimal">
+        <span class="un">ml/hr</span>
+      </div>
+
+      <div class="dv"></div>
+
+      <!-- イントラリポス (P2のみ) -->
+      <div class="togrow">
+        <span class="toglbl">🫙 イントラリポス20%</span>
+        <label class="sw"><input type="checkbox" id="p2fatChk"><span class="sw-t"></span></label>
+      </div>
+      <div class="fat-b" id="p2fatB">
+        <div class="fr">
+          <span class="lb">1日量</span>
+          <input type="number" id="p2fatr" placeholder="0" step="1" min="0" inputmode="numeric">
+          <span class="un">ml/日</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ミルク -->
+  <div class="card">
+    <div class="ch"><span class="ci">🍼</span><span class="ct">ミルク・母乳</span></div>
+    <div class="cb">
+      <div class="seg" id="p2mSeg">
+        <button class="sg on" data-t="none">なし</button>
+        <button class="sg" data-t="breast">母乳</button>
+        <button class="sg" data-t="formula">普通ミルク</button>
+        <button class="sg" data-t="f15">15%ミルク</button>
+      </div>
+      <div id="p2mbody" style="display:none;">
+        <div class="fr">
+          <span class="lb">1回量</span>
+          <div class="stepper">
+            <button class="st-btn" data-t="p2mVol" data-d="-1">−</button>
+            <span class="st-sep"></span>
+            <input class="st-val" type="number" id="p2mVol" value="0" min="0" step="1" inputmode="numeric">
+            <span class="st-sep"></span>
+            <button class="st-btn" data-t="p2mVol" data-d="1">＋</button>
+          </div>
+          <span class="un">ml</span>
+        </div>
+        <div class="fr">
+          <span class="lb">回数</span>
+          <div class="stepper">
+            <button class="st-btn" data-t="p2mFreq" data-d="-1">−</button>
+            <span class="st-sep"></span>
+            <input class="st-val" type="number" id="p2mFreq" value="8" min="0" step="1" inputmode="numeric">
+            <span class="st-sep"></span>
+            <button class="st-btn" data-t="p2mFreq" data-d="1">＋</button>
+          </div>
+          <span class="un">回/日</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 結果 -->
+  <div class="rc">
+    <div class="rh"><span style="font-size:16px">📊</span><span class="rh-t">計算結果</span></div>
+    <div id="p2res"><div class="empty">輸液またはミルクを<br>入力してください</div></div>
+  </div>
+  <div class="foot">小児輸液計算 v1.2 ― 必ず医師の判断のもとでご使用ください</div>
+</div>
+
+<script>
+'use strict';
+
+// ━━━ 輸液組成 (per liter) ━━━
+const FLUIDS = {
+  soldem3a:  {name:'ソルデム3A',       na:35,  k:20, ca:0,   cl:35,  glu:43,  kcal:172  },
+  soldem3ag: {name:'ソルデム3AG',      na:35,  k:20, ca:0,   cl:35,  glu:75,  kcal:300  },
+  soldem1:   {name:'ソルデム1',        na:90,  k:0,  ca:0,   cl:70,  glu:26,  kcal:104  },
+  solitat2:  {name:'ソリタT2',         na:84,  k:20, ca:0,   cl:66,  glu:32,  kcal:128  },
+  peroral:   {name:'ペロール注',       na:130, k:4,  ca:3,   cl:109, glu:50,  kcal:200  },
+  lactec:    {name:'ラクテック注',     na:130, k:4,  ca:3,   cl:109, glu:0,   kcal:0    },
+  ns:        {name:'生食（NS）',       na:154, k:0,  ca:0,   cl:154, glu:0,   kcal:0    },
+  glu10:     {name:'10%ブドウ糖',     na:0,   k:0,  ca:0,   cl:0,   glu:100, kcal:400  },
+  glu50:     {name:'50%ブドウ糖',     na:0,   k:0,  ca:0,   cl:0,   glu:500, kcal:2000 },
+  calcicol:  {name:'カルチコール8.5%', na:0,   k:0,  ca:390, cl:0,   glu:0,   kcal:0    },
+};
+const FLUID_KEYS = Object.keys(FLUIDS);
+const FAT_KCAL   = 2000; // イントラリポス20% kcal/L
+const CA_ML_CONV = 0.39; // カルチコール8.5%: 0.39 mEq/mL → Ca mEq/日 ÷ 0.39 = ml換算
+
+const MILK = {
+  none:    {label:'なし',       kc:0    },
+  breast:  {label:'母乳',       kc:0.67 },
+  formula: {label:'普通ミルク', kc:0.68 },
+  f15:     {label:'15%ミルク', kc:1.00 },
+};
+
+// ━━━ 体重リスト (4kg以下0.1刻み、4kg超0.5刻み) ━━━
+const WTS = [];
+for (let i=5;  i<=40;  i++) WTS.push(+(i/10).toFixed(1)); // 0.5〜4.0
+for (let i=9;  i<=120; i++) WTS.push(+(i/2 ).toFixed(1)); // 4.5〜60.0
+const ITEM_H = 44;
+const DEF_W  = 3.0;
+
+// ━━━ セレクト初期化 ━━━
+function populateSelect(id) {
+  const sel = document.getElementById(id);
+  FLUID_KEYS.forEach(k => {
+    const o = document.createElement('option');
+    o.value = k; o.textContent = FLUIDS[k].name;
+    sel.appendChild(o);
+  });
+}
+['p1f1s','p2f1s','p2f2s','p2f3s'].forEach(populateSelect);
+
+// ━━━ タブ ━━━
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+    tab.classList.add('on');
+    document.getElementById(tab.dataset.p).classList.add('on');
+  });
+});
+
+// ━━━ ピッカー ━━━
+function initPicker(scrollId, dispId, onChange) {
+  const ps = document.getElementById(scrollId);
+  const dp = document.getElementById(dispId);
+  let idx  = WTS.indexOf(DEF_W); if (idx<0) idx=0;
+
+  const bot = ps.lastElementChild;
+  WTS.forEach((w,i) => {
+    const el = document.createElement('div');
+    el.className = 'pi'+(i===idx?' sel':'');
+    el.textContent = w.toFixed(1)+' kg';
+    ps.insertBefore(el, bot);
+  });
+  requestAnimationFrame(() => { ps.scrollTop = idx*ITEM_H; });
+
+  let tmr=null;
+  ps.addEventListener('scroll', ()=>{
+    if (tmr) clearTimeout(tmr);
+    tmr = setTimeout(()=>{
+      const ni = Math.max(0,Math.min(WTS.length-1, Math.round(ps.scrollTop/ITEM_H)));
+      if (ni!==idx) {
+        idx=ni;
+        ps.querySelectorAll('.pi').forEach((el,i)=>el.classList.toggle('sel',i===idx));
+        dp.textContent = WTS[idx].toFixed(1);
+        onChange(WTS[idx]);
+      }
+    }, 80);
+  },{passive:true});
+  return ()=>WTS[idx];
+}
+
+// ━━━ ステッパー ━━━
+function initSteppers(cb) {
+  document.querySelectorAll('.st-btn').forEach(btn => {
+    btn.addEventListener('click', ()=>{
+      const inp = document.getElementById(btn.dataset.t);
+      inp.value = Math.max(0,(parseFloat(inp.value)||0)+parseInt(btn.dataset.d));
+      cb();
+    });
+  });
+}
+
+// ━━━ Holliday-Segar ━━━
+function hs(w){ return w<=10?w*100:w<=20?1000+(w-10)*50:1500+(w-20)*20; }
+
+// ━━━ フォーマット ━━━
+const f   = (v,d=1) => isFinite(v)&&v!==null ? v.toFixed(d) : '—';
+const pK  = (v,w,d=1) => (w>0&&isFinite(v)) ? (v/w).toFixed(d) : '—';
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 結果HTML生成
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function buildResult({wt, ivVolDay, milkDay, milkType,
+                       girMode, girTotal,
+                       singleFluidName, singleGluPct,          // P1用
+                       glucoseParts, totalGluGrams, totalMixVolL, // P2用
+                       tNa, tK, tCa, ivKcal, fatKcal, summaryRows,
+                       naCalcStr, kCalcStr}) {          // P2 mEq/L式
+
+  const ttlVol  = ivVolDay + milkDay;
+  const milkKc  = milkDay * MILK[milkType].kc;
+  const ttlKcal = ivKcal + fatKcal + milkKc;
+  const hsTgt   = hs(wt);
+  const SEP = `border-top:1px solid rgba(255,255,255,.18);margin-top:2px;padding-top:5px`;
+
+  let html = '';
+
+  // ──────────────────────────────────────
+  // 💧 水分量（3列グリッド）
+  // ──────────────────────────────────────
+  html += `<div class="rs"><div class="rs-t">💧 水分量</div>`;
+  html += `<div class="wtab">`;
+  html += `<span></span>`;
+  html += `<span class="whdr">ml/日</span>`;
+  html += `<span class="whdr">体重あたり<br>ml/kg/日</span>`;
+  if (ivVolDay > 0) {
+    html += `<span class="wl">点滴水分量</span>`;
+    html += `<span class="wv">${f(ivVolDay,0)}</span>`;
+    html += `<span class="wv">${pK(ivVolDay,wt)}</span>`;
+  }
+  if (milkDay > 0) {
+    html += `<span class="wl">ミルク（${MILK[milkType].label}）</span>`;
+    html += `<span class="wv">${f(milkDay,0)}</span>`;
+    html += `<span class="wv">${pK(milkDay,wt)}</span>`;
+  }
+  html += `<span class="wl tot" style="${SEP}">合計水分量</span>`;
+  html += `<span class="wv"     style="${SEP}">${f(ttlVol,0)}</span>`;
+  html += `<span class="wv hi"  style="${SEP}">${pK(ttlVol,wt)}</span>`;
+  html += `<span class="wl hs">H-S目標</span>`;
+  html += `<span class="wv gr">${f(hsTgt,0)}</span>`;
+  html += `<span class="wv gr">${pK(hsTgt,wt)}</span>`;
+  html += `</div></div>`;
+
+  // ──────────────────────────────────────
+  // 🍬 糖
+  // ──────────────────────────────────────
+  html += `<div class="rs"><div class="rs-t">🍬 糖</div>`;
+
+  if (girMode === 'single') {
+    // ── P1: 製剤名＋糖濃度 → GIR1行
+    if (singleFluidName) {
+      const pctTxt = singleGluPct !== '0.0' ? `${singleGluPct}%Glu` : '糖なし';
+      html += rRow(singleFluidName, pctTxt, '');
+    }
+    html += rRow('GIR（点滴のみ）',
+      girTotal > 0 ? `${f(girTotal,2)} mg/kg/min` : '—', '');
+
+  } else {
+    // ── P2: 糖計算過程 → GIR1行
+    if (glucoseParts && glucoseParts.length > 0 && totalMixVolL > 0) {
+      const partsStr = glucoseParts.map(p=>`${p.name} ${f(p.grams,2)}g`).join(' ＋ ');
+      const concGperL = totalGluGrams / totalMixVolL;
+      const pct = (concGperL / 10).toFixed(1);
+      html += `<div class="rsb" style="text-align:left;color:rgba(255,255,255,.85);font-size:12px;line-height:1.6">`;
+      html += `${partsStr} ＝ ${f(totalGluGrams,2)}g<br>`;
+      html += `${f(totalGluGrams,2)}g ÷ ${f(totalMixVolL,3)}L ＝ ${f(concGperL,1)}g/L（${pct}%Glu）`;
+      html += `</div>`;
+    } else if (totalMixVolL > 0) {
+      html += `<div class="rsb" style="text-align:left">糖なし</div>`;
+    }
+    html += rRow('GIR（点滴のみ）',
+      girTotal > 0 ? `${f(girTotal,2)} mg/kg/min` : '—', '');
+  }
+  html += `</div>`;
+
+  // ──────────────────────────────────────
+  // 🧪 電解質（輸液のみ）
+  // ──────────────────────────────────────
+  html += `<div class="rs"><div class="rs-t">🧪 電解質（輸液のみ）</div>`;
+  html += rRow('Na', `${pK(tNa,wt,2)} mEq/kg/日`, `（${f(tNa,1)} mEq/日）`);
+  if (naCalcStr) html += `<div class="rcalc">${naCalcStr}</div>`;
+  html += rRow('K',  `${pK(tK, wt,2)} mEq/kg/日`, `（${f(tK, 1)} mEq/日）`);
+  if (kCalcStr)  html += `<div class="rcalc">${kCalcStr}</div>`;
+  if (tCa > 0) {
+    const caMLperKg = (tCa / CA_ML_CONV) / wt;
+    // ml/kg/日 を強調
+    html += `<div class="rr"><span class="rl">Ca</span><span class="rv">${pK(tCa,wt,2)} mEq/kg/日<sub>（${f(caMLperKg,2)} <span style="color:#93C5FD;font-weight:800">ml/kg/日</span>）</sub></span></div>`;
+  }
+  html += `</div>`;
+
+  // ──────────────────────────────────────
+  // 🔥 カロリー
+  // ──────────────────────────────────────
+  html += `<div class="rs"><div class="rs-t">🔥 カロリー</div>`;
+  if (ivKcal>0)   html += rRow('輸液カロリー',    `${pK(ivKcal, wt,1)} kcal/kg/日`, `（${f(ivKcal, 0)} kcal/日）`);
+  if (fatKcal>0)  html += rRow('脂肪乳剤',        `${pK(fatKcal,wt,1)} kcal/kg/日`, `（${f(fatKcal,0)} kcal/日）`);
+  if (milkKc>0)   html += rRow(`ミルク（${MILK[milkType].label}）`,
+                                `${pK(milkKc,wt,1)} kcal/kg/日`, `（${f(milkKc,0)} kcal/日）`);
+  html += rRow('合計カロリー',  `${pK(ttlKcal,wt,1)} kcal/kg/日`, `（${f(ttlKcal,0)} kcal/日）`, true);
+  html += `</div>`;
+
+  // ──────────────────────────────────────
+  // 📋 使用製剤
+  // ──────────────────────────────────────
+  if (summaryRows.length) {
+    html += `<div class="rs"><div class="rs-t">📋 使用製剤</div>`;
+    summaryRows.forEach(r => { html += r; });
+    html += `</div>`;
+  }
+  return html;
+}
+
+// 汎用行
+function rRow(lbl, val, sub='', hi=false) {
+  return `<div class="rr">
+    <span class="rl">${lbl}</span>
+    <span class="rv${hi?' hi':''}">${val}${sub?`<sub>${sub}</sub>`:''}</span>
+  </div>`;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PAGE 1
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let p1Wt = DEF_W, p1Milk = 'none';
+initPicker('ps1','w1disp', w=>{ p1Wt=w; calcP1(); });
+
+document.querySelectorAll('#p1mSeg .sg').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    p1Milk = btn.dataset.t;
+    document.querySelectorAll('#p1mSeg .sg').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    document.getElementById('p1mbody').style.display = p1Milk==='none'?'none':'';
+    calcP1();
+  });
+});
+['p1f1s','p1f1r','p1mVol','p1mFreq'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', calcP1);
+});
+
+function calcP1() {
+  const wt  = p1Wt;
+  const f1k = document.getElementById('p1f1s').value;
+  const f1r = parseFloat(document.getElementById('p1f1r').value)||0;
+  const mV  = parseFloat(document.getElementById('p1mVol').value)||0;
+  const mF  = parseFloat(document.getElementById('p1mFreq').value)||0;
+  const milkDay = p1Milk!=='none' ? mV*mF : 0;
+  const fl  = f1k ? FLUIDS[f1k] : null;
+
+  const ivVolDay = f1r*24;
+  const anyInput = (fl&&f1r>0)||milkDay>0;
+  const res = document.getElementById('p1res');
+
+  if (!anyInput){ res.innerHTML='<div class="empty">輸液またはミルクを<br>入力してください</div>'; return; }
+
+  const gir = (fl&&f1r>0) ? fl.glu*f1r/(60*wt) : 0;
+  const tNa = fl ? fl.na*f1r*24/1000 : 0;
+  const tK  = fl ? fl.k *f1r*24/1000 : 0;
+  const tCa = fl ? fl.ca*f1r*24/1000 : 0;
+  const ivKc = fl ? fl.kcal*f1r*24/1000 : 0;
+
+  const summary = [];
+  if (fl) {
+    const pct=(fl.glu/10).toFixed(1);
+    summary.push(rRow(fl.name, `${f(f1r,1)} ml/hr`, pct!=='0.0'?`Glu ${pct}%`:''));
+  }
+
+  const singleGluPct = fl ? (fl.glu/10).toFixed(1) : '0.0';
+  res.innerHTML = buildResult({
+    wt, ivVolDay, milkDay, milkType:p1Milk,
+    girMode:'single', girTotal:gir,
+    singleFluidName: fl ? fl.name : '',
+    singleGluPct,
+    glucoseParts:[], totalGluGrams:0, totalMixVolL:0,
+    tNa, tK, tCa, ivKcal:ivKc, fatKcal:0, summaryRows:summary
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PAGE 2: 混ぜる
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let p2Wt = DEF_W, p2Milk = 'none';
+initPicker('ps2','w2disp', w=>{ p2Wt=w; calcP2(); });
+
+// 輸液③ 追加/削除
+document.getElementById('addF3').addEventListener('click',()=>{
+  document.getElementById('f3wrap').classList.add('show');
+  document.getElementById('addF3').style.display='none';
+  calcP2();
+});
+document.getElementById('delF3').addEventListener('click',()=>{
+  document.getElementById('f3wrap').classList.remove('show');
+  document.getElementById('addF3').style.display='';
+  document.getElementById('p2f3s').value='';
+  document.getElementById('p2v3').value='';
+  calcP2();
+});
+
+document.getElementById('p2fatChk').addEventListener('change',function(){
+  document.getElementById('p2fatB').classList.toggle('on',this.checked);
+  if(!this.checked) document.getElementById('p2fatr').value='';
+  calcP2();
+});
+
+document.querySelectorAll('#p2mSeg .sg').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    p2Milk = btn.dataset.t;
+    document.querySelectorAll('#p2mSeg .sg').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    document.getElementById('p2mbody').style.display = p2Milk==='none'?'none':'';
+    calcP2();
+  });
+});
+['p2f1s','p2v1','p2f2s','p2v2','p2f3s','p2v3','p2rate','p2fatr','p2mVol','p2mFreq'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', calcP2);
+});
+
+function calcP2() {
+  const wt   = p2Wt;
+  const f1k  = document.getElementById('p2f1s').value;
+  const v1   = parseFloat(document.getElementById('p2v1').value)||0;
+  const f2k  = document.getElementById('p2f2s').value;
+  const v2   = parseFloat(document.getElementById('p2v2').value)||0;
+  const f3show = document.getElementById('f3wrap').classList.contains('show');
+  const f3k  = f3show ? document.getElementById('p2f3s').value : '';
+  const v3   = f3show ? (parseFloat(document.getElementById('p2v3').value)||0) : 0;
+  const rate = parseFloat(document.getElementById('p2rate').value)||0;
+  const fatOn    = document.getElementById('p2fatChk').checked;
+  const fatVolDay= fatOn ? (parseFloat(document.getElementById('p2fatr').value)||0) : 0; // ml/日 直接入力
+  const mV   = parseFloat(document.getElementById('p2mVol').value)||0;
+  const mF   = parseFloat(document.getElementById('p2mFreq').value)||0;
+  const milkDay = p2Milk!=='none' ? mV*mF : 0;
+
+  const fl1 = f1k ? FLUIDS[f1k] : null;
+  const fl2 = f2k ? FLUIDS[f2k] : null;
+  const fl3 = f3k ? FLUIDS[f3k] : null;
+  const totalMix = v1+v2+v3;
+
+  document.getElementById('mixTotal').textContent = totalMix>0 ? `${totalMix} ml` : '— ml';
+
+  const anyInput = (rate>0&&totalMix>0&&(fl1||fl2||fl3))||fatVolDay>0||milkDay>0;
+  const res = document.getElementById('p2res');
+  if (!anyInput){ res.innerHTML='<div class="empty">輸液またはミルクを<br>入力してください</div>'; return; }
+
+  // 混合後濃度計算
+  function mixConc(c1,c2,c3){
+    if(totalMix===0) return 0;
+    const tot=(fl1?c1*(v1/1000):0)+(fl2?c2*(v2/1000):0)+(fl3?c3*(v3/1000):0);
+    return tot/(totalMix/1000);
+  }
+  const mNa   = mixConc(fl1?fl1.na:0,   fl2?fl2.na:0,   fl3?fl3.na:0);
+  const mK    = mixConc(fl1?fl1.k:0,    fl2?fl2.k:0,    fl3?fl3.k:0);
+  const mCa   = mixConc(fl1?fl1.ca:0,   fl2?fl2.ca:0,   fl3?fl3.ca:0);
+  const mGlu  = mixConc(fl1?fl1.glu:0,  fl2?fl2.glu:0,  fl3?fl3.glu:0);
+  const mKcal = mixConc(fl1?fl1.kcal:0, fl2?fl2.kcal:0, fl3?fl3.kcal:0);
+
+  // 脂肪乳剤は ml/日 直接入力
+  const ivVolDay = rate*24 + fatVolDay;
+  const tNa  = rate>0 ? mNa  *rate*24/1000 : 0;
+  const tK   = rate>0 ? mK   *rate*24/1000 : 0;
+  const tCa  = rate>0 ? mCa  *rate*24/1000 : 0;
+  const ivKc = rate>0 ? mKcal*rate*24/1000 : 0;
+  const fatKc= FAT_KCAL*fatVolDay/1000; // 2000kcal/L × ml/1000 = kcal
+
+  const girTotal = (rate>0&&totalMix>0) ? mGlu*rate/(60*wt) : 0;
+
+  // 糖計算過程（糖を含む輸液のみ列挙）
+  const totalMixVolL = totalMix / 1000;
+  const glucoseParts = [];
+  let totalGluGrams = 0;
+  [[fl1,v1],[fl2,v2],[fl3,v3]].forEach(([fl,v])=>{
+    if(fl && v>0 && fl.glu>0){
+      const g = fl.glu * (v/1000); // g
+      glucoseParts.push({name:fl.name, grams:g});
+      totalGluGrams += g;
+    }
+  });
+
+  // mEq/L 計算式文字列（混ぜるページ用）
+  function elyteCalcStr(prop) {
+    const items = [[fl1,v1],[fl2,v2],[fl3,v3]].filter(([fl,v])=>fl&&v>0);
+    if (!items.length || totalMix===0) return null;
+    // 寄与するもののみ表示（conc>0）
+    const nonZero = items.filter(([fl])=>fl[prop]>0);
+    if (!nonZero.length) return null;
+    const partsStr = nonZero.map(([fl,v])=>`${fl[prop]}×${v}`).join(' ＋ ');
+    const total = items.reduce((s,[fl,v])=>s+(fl[prop]*v),0);
+    const conc  = total / totalMix;
+    return `（${partsStr}）÷ ${totalMix} ＝ ${conc.toFixed(1)} mEq/L`;
+  }
+  const naCalcStr = elyteCalcStr('na');
+  const kCalcStr  = elyteCalcStr('k');
+
+  const summary = [];
+  if(fl1&&v1>0){const p=(fl1.glu/10).toFixed(1);summary.push(rRow(fl1.name,`${v1} ml`,p!=='0.0'?`Glu ${p}%`:''));}
+  if(fl2&&v2>0){const p=(fl2.glu/10).toFixed(1);summary.push(rRow(fl2.name,`${v2} ml`,p!=='0.0'?`Glu ${p}%`:''));}
+  if(fl3&&v3>0){const p=(fl3.glu/10).toFixed(1);summary.push(rRow(fl3.name,`${v3} ml`,p!=='0.0'?`Glu ${p}%`:''));}
+  if(totalMix>0&&rate>0) summary.push(rRow('混合後 投与速度',`${f(rate,1)} ml/hr`,''));
+  if(fatVolDay>0) summary.push(rRow('イントラリポス20%',`${fatVolDay} ml/日`,''));
+
+  res.innerHTML = buildResult({
+    wt, ivVolDay, milkDay, milkType:p2Milk,
+    girMode:'mixed', girTotal,
+    singleFluidName:'', singleGluPct:'0.0',
+    glucoseParts, totalGluGrams, totalMixVolL,
+    tNa, tK, tCa, ivKcal:ivKc, fatKcal:fatKc, summaryRows:summary,
+    naCalcStr, kCalcStr
+  });
+}
+
+// ━━━ ステッパー・追加input監視 ━━━
+function calcBoth(){ calcP1(); calcP2(); }
+initSteppers(calcBoth);
+['p1mVol','p1mFreq','p2mVol','p2mFreq'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', calcBoth);
+});
+
+// ━━━ Service Worker ━━━
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{ navigator.serviceWorker.register('./sw.js').catch(()=>{}); });
+}
+</script>
+</body>
+</html>
